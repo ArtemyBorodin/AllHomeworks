@@ -319,13 +319,13 @@ class Program
 
                 Console.Write($"Слот-назначение (1-{S}): ");
                 string? toSlotInput = Console.ReadLine();
-                bool toSlotOk = int.TryParse(toSlotInput,   out int toSlot);
+                bool toSlotOk = int.TryParse(toSlotInput, out int toSlot);
 
                 // проверка корректности 
                 if (!fromSlotOk || !toSlotOk || fromSlot < 1 || fromSlot > S || toSlot < 1 || toSlot > S)
                 {
                     Console.WriteLine("Ошибка: неверный номер слота!");
-                    Console.ReadKey();  
+                    Console.ReadKey();
                 }
                 else if ((fromShelfName != "A" && fromShelfName != "B") || (toShelfName != "A" && toShelfName != "B"))
                 {
@@ -371,6 +371,32 @@ class Program
                         }
                     }
                 }
+            }
+            else if (input == "4")
+            {
+                Console.Clear();
+                Console.WriteLine("=== ЖУРНАЛЫ СОБЫТИЙ ===\n");
+
+                Console.WriteLine("--- Размещения ---");
+                foreach (var e in placedJournal.GetAll())
+                {
+                    Console.WriteLine(e.ToScreenLine());
+                }
+
+                Console.WriteLine("\n--- Изъятия ---");
+                foreach (var e in takenJournal.GetAll())
+                {
+                    Console.WriteLine(e.ToScreenLine());
+                }
+
+                Console.WriteLine("\n--- Переносы ---");
+                foreach (var e in movedJournal.GetAll())
+                {
+                    Console.WriteLine(e.ToScreenLine());
+                }
+
+                Console.WriteLine("\nНажмите любую клавишу...");
+                Console.ReadKey();
             }
         }
     }
