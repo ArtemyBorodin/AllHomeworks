@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\art_b\\source\\repos\\HomeWork2\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{00E4A7CB-F2C9-45BA-A436-A5646EC29B0E}|HomeWork2\\HomeWork2.csproj|c:\\users\\art_b\\source\\repos\\homework2\\homework2\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{00E4A7CB-F2C9-45BA-A436-A5646EC29B0E}|HomeWork2\\HomeWork2.csproj|solutionrelative:homework2\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\art_b\\source\\repos\\HomeWork2\\HomeWork2\\Program.cs",
+              "RelativeDocumentMoniker": "HomeWork2\\Program.cs",
+              "ToolTip": "C:\\Users\\art_b\\source\\repos\\HomeWork2\\HomeWork2\\Program.cs",
+              "RelativeToolTip": "HomeWork2\\Program.cs",
+              "ViewState": "AgIAAF0BAAAAAAAAAAAUwGkBAAA8AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-24T17:52:00.875Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
