@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using System.IO;
 
 // интерфейс
 public interface IJournalEntry
@@ -157,6 +159,17 @@ public class Journal<T> where T : IJournalEntry
     {
         return _entries;
     }
+
+    public void SaveToFile(string path)
+    {
+        using (StreamWriter writer = new StreamWriter(path))
+        {
+            foreach (T entry in _entries)
+            {
+                writer.WriteLine(entry.ToLogLine());
+            }
+        }
+    }
 }
 
 public class FailedAttemptEvent : IJournalEntry
@@ -200,6 +213,63 @@ class Program
 
         Journal<FailedAttemptEvent> failedJournal = new Journal<FailedAttemptEvent>();
 
+        if (File.Exists("placed.log"))
+        {
+            string[] lines = File.ReadAllLines("placed.log");
+            foreach (string line in lines)
+            {
+                string[] parts = line.Split('|');
+                if (parts.Length == 3)
+                {
+                    PlacedEvent e = new PlacedEvent(parts[0], int.Parse(parts[1]), parts[2]);
+                    placedJournal.Add(e);
+                }
+            }
+        }
+
+        if (File.Exists("taken.log"))
+        {
+            string[] lines = File.ReadAllLines("taken.log");
+            foreach (string line in lines)
+            {
+                string[] parts = line.Split('|');
+                if (parts.Length == 3)
+                {
+                    TakenEvent e = new TakenEvent(parts[0], int.Parse(parts[1]), parts[2]);
+                    takenJournal.Add(e);
+                }
+            }
+        }
+        
+        if (File.Exists("moved.log"))
+        {
+            string[] lines = File.ReadAllLines("moved.log");
+            foreach (string line in lines)
+            {
+                string[] parts = line.Split('|');
+                if (parts.Length == 5)
+                {
+                    MovedEvent e = new MovedEvent(parts[0], int.Parse(parts[1]), parts[2], int.Parse(parts[3]), parts[4]);
+                    movedJournal.Add(e);
+                }
+            }
+        }
+
+        if (File.Exists("failed.log"))
+        {
+            string[] lines = File.ReadAllLines("failed.log");
+            foreach (string line in lines)
+            {
+                string[] parts = line.Split('|');
+                if (parts.Length == 4)
+                {
+                    FailedAttemptEvent e = new FailedAttemptEvent(parts[0], parts[1] == "" ? null : parts[1],
+                        parts[2] == "" ? null : int.Parse(parts[2]), parts[3]);
+                    failedJournal.Add(e);
+                }
+            }
+        }
+
         // создаем две полки 
         Shelf shelfA = new Shelf("A", S);
         Shelf shelfB = new Shelf("B", S);
@@ -228,8 +298,14 @@ class Program
             // обрабокта выбора            
             if (input == "5")
             {
+                // Сохраняем журналы в файлы
+                placedJournal.SaveToFile("placed.log");
+                takenJournal.SaveToFile("taken.log");
+                movedJournal.SaveToFile("moved.log");
+                failedJournal.SaveToFile("failed.log");
+
                 exit = true;
-                Console.WriteLine("Выход из прогаммы...");
+                Console.WriteLine("Журналы сохранены в файлы. Выход из программы...");
             }
             else if (input == "1")
             {
