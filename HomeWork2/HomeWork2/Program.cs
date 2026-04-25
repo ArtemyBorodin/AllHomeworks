@@ -35,11 +35,11 @@ public class Shelf
     public string? Take(int slotNumber)
     {
         int index = slotNumber - 1;
-        
+
         if (_slots[index] == null) return null;
 
         string product = _slots[index];
-        _slots[index] = null; 
+        _slots[index] = null;
         return product;
     }
 
@@ -48,7 +48,7 @@ public class Shelf
     {
         return _slots[slotNumber - 1];
     }
-    
+
     // показать полку на экране 
     public void Display()
     {
@@ -56,7 +56,7 @@ public class Shelf
         for (int i = 0; i < _slots.Length; i++)
         {
             string content = _slots[i] ?? "пусто";
-            Console.WriteLine($"[{i+1}] {content} ");
+            Console.WriteLine($"[{i + 1}] {content} ");
         }
         Console.WriteLine();
     }
@@ -73,9 +73,9 @@ public class PlacedEvent : IJournalEntry
     // конструктор 
     public PlacedEvent(string shelf, int slot, string productName)
     {
-        Shelf = shelf;  
-        Slot = slot;    
-        ProductName = productName;  
+        Shelf = shelf;
+        Slot = slot;
+        ProductName = productName;
     }
 
     public string ToLogLine()
@@ -159,6 +159,32 @@ public class Journal<T> where T : IJournalEntry
     }
 }
 
+public class FailedAttemptEvent : IJournalEntry
+{
+    public string OperationType { get; }
+    public string? Shelf { get; }
+    public int? Slot { get; }
+    public string Reason { get; }
+
+    public FailedAttemptEvent(string operationType, string? shelf, int? slot, string reason)
+    {
+        OperationType = operationType;
+        Shelf = shelf;
+        Slot = slot;
+        Reason = reason;
+
+    }
+
+    public string ToLogLine()
+    {
+        return $"{OperationType}|{Shelf ?? ""}|{Slot?.ToString() ?? ""}|{Reason}";
+    }
+
+    public string ToScreenLine()
+    {
+        return $"Неудача | {OperationType} | полка {Shelf ?? "?"} слот {Slot?.ToString() ?? "?"} | причина: {Reason}";
+    }
+}
 
 // класс программ
 class Program
@@ -171,6 +197,8 @@ class Program
         Journal<PlacedEvent> placedJournal = new Journal<PlacedEvent>();
         Journal<TakenEvent> takenJournal = new Journal<TakenEvent>();
         Journal<MovedEvent> movedJournal = new Journal<MovedEvent>();
+
+        Journal<FailedAttemptEvent> failedJournal = new Journal<FailedAttemptEvent>();
 
         // создаем две полки 
         Shelf shelfA = new Shelf("A", S);
@@ -194,7 +222,7 @@ class Program
             Console.WriteLine("4 - Показать журналы");
             Console.WriteLine("5 - Выход");
             Console.Write("\nВаш выбор  ");
-            
+
             string? input = Console.ReadLine();
 
             // обрабокта выбора            
@@ -219,17 +247,23 @@ class Program
                 // Проверка корректности ввода 
                 if (!slotOk || slot < 1 || slot > S)
                 {
-                    Console.WriteLine("Ошибка: название товара не может быть пустым!");
+                    Console.WriteLine("Ошибка: неверный номер слота!");
+                    FailedAttemptEvent failed = new FailedAttemptEvent("Положить", shelfName, 0, "неверный номер слота");
+                    failedJournal.Add(failed);
                     Console.ReadKey();
                 }
                 else if (string.IsNullOrWhiteSpace(product))
                 {
                     Console.WriteLine("Ошибка: название товара не может быть пустым!");
+                    FailedAttemptEvent failed = new FailedAttemptEvent("Положить", shelfName, slot, "пустое название товара");
+                    failedJournal.Add(failed);
                     Console.ReadKey();
                 }
                 else if (shelfName != "A" && shelfName != "B")
                 {
                     Console.WriteLine("Ошибка: полка должна быть A или B!");
+                    FailedAttemptEvent failed = new FailedAttemptEvent("Положить", shelfName, slot, "неверная полка");
+                    failedJournal.Add(failed);
                     Console.ReadKey();
                 }
                 else
@@ -250,6 +284,8 @@ class Program
                     else
                     {
                         Console.WriteLine($"Ошибка: слот {slot} на полке {shelfName} уже занят!");
+                        FailedAttemptEvent failed = new FailedAttemptEvent("Положить", shelfName, slot, "слот занят");
+                        failedJournal.Add(failed);
                     }
                     Console.ReadKey();
                 }
@@ -268,11 +304,15 @@ class Program
                 if (!slotOk || slot < 1 || slot > S)
                 {
                     Console.WriteLine("Ошибка: неверный номер слота!");
+                    FailedAttemptEvent failed = new FailedAttemptEvent("Забрать", shelfName, 0, "неверный номер слота");
+                    failedJournal.Add(failed);
                     Console.ReadKey();
                 }
                 else if (shelfName != "A" && shelfName != "B")
                 {
                     Console.WriteLine("Ошибка: полка должна быть А или В!");
+                    FailedAttemptEvent failed = new FailedAttemptEvent("Забрать", shelfName, slot, "неверная полка");
+                    failedJournal.Add(failed);
                     Console.ReadKey();
                 }
                 else
@@ -286,6 +326,8 @@ class Program
                     if (product == null)
                     {
                         Console.WriteLine($"Ошибка: слот {slot} на полке {shelfName} пуст! Нечего забирать.");
+                        FailedAttemptEvent failed = new FailedAttemptEvent("Забрать", shelfName, slot, "слот пуст");
+                        failedJournal.Add(failed);
                         Console.ReadKey();
                     }
                     else
@@ -325,11 +367,15 @@ class Program
                 if (!fromSlotOk || !toSlotOk || fromSlot < 1 || fromSlot > S || toSlot < 1 || toSlot > S)
                 {
                     Console.WriteLine("Ошибка: неверный номер слота!");
+                    FailedAttemptEvent failed = new FailedAttemptEvent("Перенести", fromShelfName, fromSlot, "неверный номер слота");
+                    failedJournal.Add(failed);
                     Console.ReadKey();
                 }
                 else if ((fromShelfName != "A" && fromShelfName != "B") || (toShelfName != "A" && toShelfName != "B"))
                 {
                     Console.WriteLine("Ошибка: полка должна быть A или B!");
+                    FailedAttemptEvent failed = new FailedAttemptEvent("Перенести", fromShelfName, fromSlot, "неверная полка");
+                    failedJournal.Add(failed);
                     Console.ReadKey();
                 }
                 else
@@ -343,6 +389,8 @@ class Program
                     if (product == null)
                     {
                         Console.WriteLine($"Ошибка: слот {fromSlot} на полке {fromShelfName} пуст! Нечего переносить.");
+                        FailedAttemptEvent failed = new FailedAttemptEvent("Перенести", fromShelfName, fromSlot, "слот источника пуст");
+                        failedJournal.Add(failed);
                         Console.ReadKey();
                     }
                     else
@@ -351,6 +399,8 @@ class Program
                         if (toShelf.Peek(toSlot) != null)
                         {
                             Console.WriteLine($"Ошибка: слот {toSlot} на полке {toShelfName} уже занят!");
+                            FailedAttemptEvent failed = new FailedAttemptEvent("Перенести", toShelfName, toSlot, "слот назначения занят");
+                            failedJournal.Add(failed);
                             Console.ReadKey();
                         }
                         else
@@ -391,6 +441,12 @@ class Program
 
                 Console.WriteLine("\n--- Переносы ---");
                 foreach (var e in movedJournal.GetAll())
+                {
+                    Console.WriteLine(e.ToScreenLine());
+                }
+
+                Console.WriteLine("\n--- Неудачные попытки ---");
+                foreach (var e in failedJournal.GetAll())
                 {
                     Console.WriteLine(e.ToScreenLine());
                 }
