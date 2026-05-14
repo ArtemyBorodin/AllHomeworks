@@ -1,2 +1,6 @@
 "*.vsidx" 
 ".vs/" 
+".vs/" 
+"bin/" 
+"obj/" 
+"*.log" 
