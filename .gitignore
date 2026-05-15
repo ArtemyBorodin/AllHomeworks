@@ -4,3 +4,7 @@
 "bin/" 
 "obj/" 
 "*.log" 
+.vs/ 
+bin/ 
+obj/ 
+*.log 
