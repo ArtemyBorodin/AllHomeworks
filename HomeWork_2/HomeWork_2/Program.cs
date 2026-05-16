@@ -202,16 +202,23 @@ public class Journal<T> where T : IJournalEntry
         File.WriteAllLines(_filePath, _entries.Select(e => e.ToLogLine()));
     }
 
-    public void LoadFromFile()
+    // Загрузка журналов при старте 
+    public void LoadFromFile(Func<string, T> parser)
     {
         if (!File.Exists(_filePath)) return;
 
         var lines = File.ReadAllLines(_filePath);
         foreach (var line in lines)
         {
-            // Парсинг будет в следующем куске
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                var entry = parser(line);
+                _entries.Add(entry);
+            }
         }
     }
+
+    // новый метод 
 }
 
 // -------------------------------часть 3 создаю класс Shelf----------------------------------
@@ -292,6 +299,41 @@ class Program
     // Четвёртый журнал для неудачных попыток (Уровень 2)
     static Journal<FailedAttemptEvent> failedJournal;
 
+    // метод 
+    static void RestoreShelfState()
+    {
+        // сначала очистка полок
+        for (int i = 0; i < SLOT_COUNT; i++)
+        {
+            shelfA.Take(i, out _);
+            shelfB.Take(i, out _);
+
+        }
+        // Проходим по всем размещениям (PlacedEvent)
+        var placedEvents = placedJournal.GetAllEntries();
+        foreach (var evt in placedEvents)
+        {
+            Shelf targetShelf = GetShelf(evt.ShelfId);
+            if (targetShelf != null)
+            {
+                targetShelf.Place(evt.SlotNumber, evt.ProductName);
+            }
+        }
+
+        // Проходим по всем изъятиям (TakenEvent) и удаляем товары 
+        var takenEvents = takenJournal.GetAllEntries(); 
+        foreach (var evt in takenEvents)
+        {
+            Shelf targetShelf = GetShelf(evt.ShelfId);
+            if (targetShelf != null)
+            {
+                targetShelf.Take(evt.SlotNumber, out _);
+            }
+        }
+
+        Console.WriteLine("Состояние полок восстановлено из журналов");
+    } 
+
     static void Main()
     {
         // создание полочек
@@ -303,6 +345,21 @@ class Program
         takenJournal = new Journal<TakenEvent>("taken.log");
         movedJournal = new Journal<MovedEvent>("moved.log");
         failedJournal = new Journal<FailedAttemptEvent>("failed.log"); // новый журнал
+
+        // загружаем журналы из файлов 
+        Console.WriteLine("Зазрузка журналов ");
+        placedJournal.LoadFromFile(PlacedEvent.FromLogLine);
+        takenJournal.LoadFromFile(TakenEvent.FromLogLine);  
+        movedJournal.LoadFromFile(MovedEvent.FromLogLine);  
+        failedJournal.LoadFromFile(FailedAttemptEvent.FromLogLine);   
+
+        Console.WriteLine($"Загружено Placed={placedJournal.GetAllEntries().Count}, " +
+                      $"Taken={takenJournal.GetAllEntries().Count}, " +
+                      $"Moved={movedJournal.GetAllEntries().Count}, " +
+                      $"Failed={failedJournal.GetAllEntries().Count}");
+
+        // Восстанавливаем состояние полок из журнала размещений и изъятий 
+        RestoreShelfState();
 
         Console.WriteLine("Ангар запущен");
 
@@ -511,7 +568,7 @@ class Program
         Shelf destShelf = GetShelf(toShelf);
         if (destShelf == null)
         {
-            Console.WriteLine("Неверная покла!");
+            Console.WriteLine("Неверная полка!");
             var failEvent = new FailedAttemptEvent("Перенести", toShelf, null, "неверная полка назначения");
             failedJournal.Add(failEvent);
             return;
