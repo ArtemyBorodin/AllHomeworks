@@ -1,7 +1,75 @@
 ﻿using System;
 using System.ComponentModel.Design;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using static System.Net.Mime.MediaTypeNames;
+
+// контекст урона 
+public class DamageContext
+{
+    public int Round { get; }
+    public int EnemyHpBeforeHit { get; }
+    public int PlayerHp { get; }
+    public int Strength { get; }
+
+    public DamageContext(int round, int enemyHpBeforeHit, int playerHp, int strength)
+    {
+        Round = round;
+        EnemyHpBeforeHit = enemyHpBeforeHit;
+        PlayerHp = playerHp;
+        Strength = strength;
+    }
+// конец класса DamageContext
+}
+
+// Делегат для модификаторов
+public delegate void DamageModifier(ref int damage, DamageContext context);
+
+//класс пайплайна
+public class PlayerDamagePipeline
+{
+    public event DamageModifier? Modifiers;
+
+    public void Apply(ref int damage, DamageContext context)
+    {
+        if (Modifiers != null)
+        {
+            //вызываем всех подписанных модификаторов
+            Delegate[] delegates = Modifiers.GetInvocationList();
+            foreach (DamageModifier modifier in delegates)
+            {
+                modifier(ref damage, context);
+                if (damage < 1) damage = 1; // минимум 1
+            }
+        }
+    }
+
+    //статические методы- модификаторы 
+    public static void ApplyBonusIfEnemyLow(ref int damage, DamageContext context)
+    {
+        if (context.EnemyHpBeforeHit < 30)
+        {
+            damage += 5;
+        }
+    }
+
+    public static void ApplyBonusIfenemyLow(ref int damage, DamageContext context)
+    {
+        if (context.EnemyHpBeforeHit < 30)
+        {
+            damage += 5;
+        }
+    }
+
+    public static void ApplyPenaltyIfPlayerLow(ref int damage, DamageContext context)
+    {
+        if (context.PlayerHp < 40)
+        {
+            damage -= 3;
+            if (damage < 1) damage = 1;
+        }
+    }
+}
 
 // Интерфейсы стратегий
 public interface IPlayerAttackStrategy
@@ -108,6 +176,11 @@ class Program
         bool hasSwitchedToCareful = false;
         bool hasSwitchedToRandom = false;
 
+        // Создаём пайплайн и подписываем модификаторы
+        PlayerDamagePipeline damagePipeline = new PlayerDamagePipeline();
+        damagePipeline.Modifiers += PlayerDamagePipeline.ApplyBonusIfEnemyLow;
+        damagePipeline.Modifiers += PlayerDamagePipeline.ApplyPenaltyIfPlayerLow;
+
         while (true)
         {
             // Отображение состояния и меню
@@ -145,15 +218,71 @@ class Program
             int playerDamage = 0;
             if (choice == 1) // лёгкий удар 
             {
-                playerDamage = lightStrategy.GetPlayerDamage(round, playerHp, enemyHp);
-                Console.WriteLine($"Игрок наносит лёгкий удар.");
-                enemyHp -= playerDamage;
+                // Получаем базовый урон от стратегии
+                int baseDamage = lightStrategy.GetPlayerDamage(round, playerHp, enemyHp);
+
+                // Сохраняем HP противника ДО удара для контекста
+                int enemyHpBeforeHit = enemyHp;
+
+                // Создаём контекст
+                DamageContext context = new DamageContext(round, enemyHpBeforeHit, playerHp, STRENGTH);
+
+                // Применяем модификаторы (урон может измениться)
+                int finalDamage = baseDamage;
+                damagePipeline.Apply(ref finalDamage, context);
+
+                // Применяем урон
+                enemyHp -= finalDamage;
+
+                // Выводим информацию
+                if (choice == 1)
+                {
+                    if (finalDamage != baseDamage)
+                        Console.WriteLine($"Игрок наносит лёгкий удар (база {baseDamage} + модификаторы = {finalDamage}).");
+                    else
+                        Console.WriteLine($"Игрок наносит лёгкий удар.");
+                }
+                else if (choice == 2)
+                {
+                    if (finalDamage != baseDamage)
+                        Console.WriteLine($"Игрок наносит тяжёлый удар (база {HEAVY_BASE} + Сила×{HEAVY_STEP} = {baseDamage}, + модификаторы = {finalDamage}).");
+                    else
+                        Console.WriteLine($"Игрок наносит тяжёлый удар (база {HEAVY_BASE} + Сила×{HEAVY_STEP} = {baseDamage}).");
+                }
             }
             else if (choice == 2)
             {
-                playerDamage = heavyStrategy.GetPlayerDamage(round, playerHp, enemyHp);
-                Console.WriteLine($"Игрок наносит тяжёлый удар (база {HEAVY_BASE} + Сила×{HEAVY_STEP} = {playerDamage}).");
-                enemyHp -= playerDamage;
+                // Получаем базовый урон от стратегии
+                int baseDamage = lightStrategy.GetPlayerDamage(round, playerHp, enemyHp);
+
+                // Сохраняем HP противника ДО удара для контекста
+                int enemyHpBeforeHit = enemyHp;
+
+                // Создаём контекст
+                DamageContext context = new DamageContext(round, enemyHpBeforeHit, playerHp, STRENGTH);
+
+                // Применяем модификаторы (урон может измениться)
+                int finalDamage = baseDamage;
+                damagePipeline.Apply(ref finalDamage, context);
+
+                // Применяем урон
+                enemyHp -= finalDamage;
+
+                // Выводим информацию
+                if (choice == 1)
+                {
+                    if (finalDamage != baseDamage)
+                        Console.WriteLine($"Игрок наносит лёгкий удар (база {baseDamage} + модификаторы = {finalDamage}).");
+                    else
+                        Console.WriteLine($"Игрок наносит лёгкий удар.");
+                }
+                else if (choice == 2)
+                {
+                    if (finalDamage != baseDamage)
+                        Console.WriteLine($"Игрок наносит тяжёлый удар (база {HEAVY_BASE} + Сила×{HEAVY_STEP} = {baseDamage}, + модификаторы = {finalDamage}).");
+                    else
+                        Console.WriteLine($"Игрок наносит тяжёлый удар (база {HEAVY_BASE} + Сила×{HEAVY_STEP} = {baseDamage}).");
+                }
             }
             else if (choice == 3) // отдых
             {
