@@ -197,25 +197,10 @@ public class Journal<T> where T : IJournalEntry
         return _entries.AsReadOnly();
     }
 
+    // сохраняет все записи в файл (перезаписывает)
     public void SaveToFile()
     {
         File.WriteAllLines(_filePath, _entries.Select(e => e.ToLogLine()));
-    }
-
-    // Загрузка журналов при старте 
-    public void LoadFromFile(Func<string, T> parser)
-    {
-        if (!File.Exists(_filePath)) return;
-
-        var lines = File.ReadAllLines(_filePath);
-        foreach (var line in lines)
-        {
-            if (!string.IsNullOrWhiteSpace(line))
-            {
-                var entry = parser(line);
-                _entries.Add(entry);
-            }
-        }
     }
 
     // новый метод 
@@ -281,6 +266,78 @@ public class Shelf // полки
     }
 }
 
+
+// вспомогательный класс для загрузки 
+public static class JournalLoader
+{
+    public static Journal<PlacedEvent> LoadPlacedJournal(string path)
+    {
+        var journal = new Journal<PlacedEvent>(path);
+        if (!File.Exists(path)) return journal;
+
+        var lines = File.ReadAllLines(path);
+        foreach (var line in lines)
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                var evt = PlacedEvent.FromLogLine(line);
+                journal.Add(evt);
+            }
+        }
+        return journal;
+    }
+
+    public static Journal<TakenEvent> LoadTakenJournal(string path)
+    {
+        var journal = new Journal<TakenEvent>(path);
+        if (!File.Exists(path)) return journal;
+
+        var lines = File.ReadAllLines(path);
+        foreach (var line in lines)
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                var evt = TakenEvent.FromLogLine(line);
+                journal.Add(evt);
+            }
+        }
+        return journal;
+    }
+
+    public static Journal<MovedEvent> LoadMovedJournal(string path)
+    {
+        var journal = new Journal<MovedEvent>(path);
+        if (!File.Exists(path)) return journal;
+
+        var lines = File.ReadAllLines(path);
+        foreach (var line in lines)
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                var evt = MovedEvent.FromLogLine(line);
+                journal.Add(evt);
+            }
+        }
+        return journal;
+    }
+
+    public static Journal<FailedAttemptEvent> LoadFailedJournal(string path)
+    {
+        var journal = new Journal<FailedAttemptEvent>(path);
+        if (!File.Exists(path)) return journal;
+
+        var lines = File.ReadAllLines(path);
+        foreach (var line in lines)
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                var evt = FailedAttemptEvent.FromLogLine(line);
+                journal.Add(evt);
+            }
+        }
+        return journal;
+    }
+}
 //---------------------------------Основная часть прога---------------------------------
 class Program
 {
@@ -340,18 +397,10 @@ class Program
         shelfA = new Shelf("A", SLOT_COUNT);
         shelfB = new Shelf("B", SLOT_COUNT);
 
-        // Создаём журналы - каждый с именем файла для сохранения 
-        placedJournal = new Journal<PlacedEvent>("placed.log");
-        takenJournal = new Journal<TakenEvent>("taken.log");
-        movedJournal = new Journal<MovedEvent>("moved.log");
-        failedJournal = new Journal<FailedAttemptEvent>("failed.log"); // новый журнал
-
-        // загружаем журналы из файлов 
-        Console.WriteLine("Зазрузка журналов ");
-        placedJournal.LoadFromFile(PlacedEvent.FromLogLine);
-        takenJournal.LoadFromFile(TakenEvent.FromLogLine);  
-        movedJournal.LoadFromFile(MovedEvent.FromLogLine);  
-        failedJournal.LoadFromFile(FailedAttemptEvent.FromLogLine);   
+        placedJournal = JournalLoader.LoadPlacedJournal("placed.log");
+        takenJournal = JournalLoader.LoadTakenJournal("taken.log");
+        movedJournal = JournalLoader.LoadMovedJournal("moved.log");
+        failedJournal = JournalLoader.LoadFailedJournal("failed.log");
 
         Console.WriteLine($"Загружено Placed={placedJournal.GetAllEntries().Count}, " +
                       $"Taken={takenJournal.GetAllEntries().Count}, " +
@@ -362,7 +411,6 @@ class Program
         RestoreShelfState();
 
         Console.WriteLine("Ангар запущен");
-
         ShowMenu();
     }
 
@@ -665,10 +713,7 @@ class Program
         takenJournal.SaveToFile();
         movedJournal.SaveToFile();
         failedJournal.SaveToFile();
-        Console.WriteLine($" Журнал размещений сохранён в placed.log ({placedJournal.GetAllEntries().Count} записей)");
-        Console.WriteLine($" Журнал изъятий сохранён в taken.log ({takenJournal.GetAllEntries().Count} записей)");
-        Console.WriteLine($" Журнал перемещений сохранён в moved.log ({movedJournal.GetAllEntries().Count} записей)");
-        Console.WriteLine($" Журнал ошибок сохранён в failed.log ({failedJournal.GetAllEntries().Count} записей)");
+        Console.WriteLine($" Журналы сохранены");
         Console.WriteLine("До свидания!");
     }
 }
